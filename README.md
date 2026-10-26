@@ -2,6 +2,14 @@
 
 Built for the **Meta Global AI Developer Hackathon** (Oct 26 – Nov 4) · Track: **Indie Developer** · Theme: **Build for Your World**
 
+## Demo video
+
+<!-- TODO: replace with the real link before submitting (deadline: Nov 4, 9:00 PM ET). -->
+<!-- Swap this for either a thumbnail that links out, e.g.:
+[![Watch the demo](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://youtu.be/VIDEO_ID)
+-->
+**[Demo video — link coming soon]**
+
 ## The problem
 
 Delivery and rideshare platforms penalize workers (pay deductions, cancellation strikes, deactivation) based almost entirely on a customer's complaint. The worker's side of the story — a locked gate, a flooded street, a flat tyre, a package that really was handed over intact — rarely gets checked against any evidence before the penalty lands. Appeals, when they exist, are a vague text box into a support queue.
