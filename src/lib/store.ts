@@ -37,6 +37,12 @@ export interface DisputeCase {
   appealText: string;
   transcript: string | null;
   similarRecentNearbyId: string | null;
+  authenticity: {
+    hasCameraMetadata: boolean;
+    takenRecently: boolean | null;
+    gpsMatchesLocation: boolean | null;
+    note: string;
+  };
   status: "ready_to_submit" | "needs_more_evidence";
 }
 

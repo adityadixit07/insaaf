@@ -104,6 +104,27 @@ export function AppealResult({ dispute }: { dispute: DisputeCase }) {
           </p>
         )}
 
+        {!dispute.authenticity.hasCameraMetadata && (
+          <details className="text-sm rounded-lg border border-border px-3 py-2">
+            <summary className="cursor-pointer font-medium text-muted">
+              Photo check: no camera metadata found
+            </summary>
+            <p className="text-muted mt-1.5">
+              This photo has no embedded camera info, so it can&apos;t be confirmed as a fresh,
+              on-location photo from this device -- this includes real photos shared through
+              apps that strip this data, not just screenshots or generated images. Spark factored
+              this into the strength score above.
+            </p>
+          </details>
+        )}
+
+        {dispute.authenticity.gpsMatchesLocation === false && (
+          <p className="text-sm text-danger bg-danger-tint rounded-lg px-3 py-2">
+            This photo&apos;s embedded GPS location doesn&apos;t match where you said this
+            happened. Double-check you&apos;re using the right photo.
+          </p>
+        )}
+
         <p className="text-sm text-muted">
           Submit to: <span className="font-semibold text-foreground">{dispute.submitTo}</span>
         </p>

@@ -103,6 +103,7 @@ export interface DraftInput {
   boxAreaFraction: number | null;
   transcript: string | null;
   similarRecentNearby: boolean;
+  authenticityNote: string;
 }
 
 const DRAFT_SCHEMA = {
@@ -164,6 +165,7 @@ export async function draftAppeal(input: DraftInput): Promise<AppealDraft> {
     input.similarRecentNearby
       ? "Note: another worker filed the same kind of defense nearby in the last 24 hours -- this may be a localized, verifiable pattern (e.g. flooding, a blocked road). Mention this as corroborating context, not as a duplicate to dismiss."
       : "No similar recent nearby case was found.",
+    `Photo metadata check (independent of what the image shows): ${input.authenticityNote}.`,
   ];
 
   const response = await client.chat.completions.create({
@@ -176,6 +178,7 @@ export async function draftAppeal(input: DraftInput): Promise<AppealDraft> {
           "You are a dispute-evidence assistant for gig delivery and rideshare workers in India appealing an unfair platform penalty. " +
           "You are given deterministic evidence from a vision model, not raw pixels -- trust it over the worker's wording. " +
           "If the detector found no match, set evidenceSupportsWorker to false, keep appealStrength low, and recommend add_more_evidence rather than inventing visual detail you were not given. " +
+          "Weigh the photo metadata check too: missing camera metadata, a stale timestamp, or a GPS mismatch are soft signals the photo may not be a genuine, fresh, on-location photo (it could be a screenshot, a reused old photo, or an AI-generated image) -- note this honestly in the appeal and lower appealStrength accordingly, but don't accuse the worker of fraud outright, since messaging apps also strip this metadata from real photos. " +
           "If the stated issue sounds like a safety incident (accident, injury, vehicle damage) rather than a routine delivery delay, recommend escalate_to_helpline. " +
           "Keep the appeal calm, factual, and first-person, written for the worker to submit as-is. Reply only with the given JSON schema.",
       },

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
+import { checkAuthenticity } from "@/lib/authenticity";
 import { getDisputeType } from "@/lib/disputes";
 import { draftAppeal, segmentImage, transcribeVoiceNote } from "@/lib/meta-client";
 import { addCase, findSimilarRecentCase } from "@/lib/store";
 
-async function fileToDataUrl(file: File): Promise<string> {
-  const buf = Buffer.from(await file.arrayBuffer());
-  return `data:${file.type || "image/jpeg"};base64,${buf.toString("base64")}`;
+function toDataUrl(buf: Buffer, mimeType: string): string {
+  return `data:${mimeType || "image/jpeg"};base64,${buf.toString("base64")}`;
 }
 
 export async function POST(request: Request) {
@@ -34,14 +34,16 @@ export async function POST(request: Request) {
   const audio = form.get("audio");
 
   try {
-    const imageDataUrl = await fileToDataUrl(image);
+    const imageBuffer = Buffer.from(await image.arrayBuffer());
+    const imageDataUrl = toDataUrl(imageBuffer, image.type);
 
-    const [matches, transcript, similar] = await Promise.all([
+    const [matches, transcript, similar, authenticity] = await Promise.all([
       segmentImage(disputeType.samPrompt, imageDataUrl),
       audio instanceof File
         ? transcribeVoiceNote(Buffer.from(await audio.arrayBuffer()))
         : Promise.resolve(null),
       findSimilarRecentCase(disputeType.id, lat, lng),
+      checkAuthenticity(imageBuffer, lat, lng),
     ]);
 
     const best = matches[0] ?? null;
@@ -59,6 +61,7 @@ export async function POST(request: Request) {
       boxAreaFraction,
       transcript,
       similarRecentNearby: similar !== null,
+      authenticityNote: authenticity.note,
     });
 
     const dispute = await addCase({
@@ -79,6 +82,7 @@ export async function POST(request: Request) {
       appealText: draft.appealText,
       transcript,
       similarRecentNearbyId: similar?.id ?? null,
+      authenticity,
       status: draft.evidenceSupportsWorker ? "ready_to_submit" : "needs_more_evidence",
     });
 

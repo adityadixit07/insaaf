@@ -13,9 +13,10 @@ A worker who's been penalized picks the defense that matches what actually happe
 1. **SAM 3.1** checks the photo against that specific defense (`"locked gate or closed building entrance"`, `"flat tire or broken down two-wheeler"`, etc.) with a pixel-accurate mask + confidence — not a guess.
 2. **Muse Voice Transcribe** turns an optional voice note into text, so a worker who'd rather speak than type isn't excluded.
 3. A deterministic geo + time check flags when another worker reported the *same kind* of issue nearby in the last 24 hours — corroborating pattern evidence (e.g. a flooded route), not noise to dismiss.
-4. **Muse Spark** reads all three signals — never raw pixels, never the worker's claim alone — and drafts a calm, factual, submit-ready appeal, an **appeal-strength score (1–5)**, and a **recommended next action** (submit now / add more evidence / escalate to a safety helpline).
+4. A deterministic **photo authenticity check** reads the image's own EXIF metadata: does it carry real camera info at all, is the timestamp recent, does the embedded GPS (if any) match where the worker says this happened. SAM 3.1 only checks *what the photo shows*, not whether it's a genuine, fresh, on-location photo — a convincing AI-generated or reused image could otherwise pass the content check cleanly. This catches the gap.
+5. **Muse Spark** reads all four signals — never raw pixels, never the worker's claim alone — and drafts a calm, factual, submit-ready appeal, an **appeal-strength score (1–5)**, and a **recommended next action** (submit now / add more evidence / escalate to a safety helpline).
 
-This is an agent with a visible second reasoning step, not a one-shot wrapper: it doesn't just verify, it tells the worker what to do next and is honest when the photo doesn't back up the claim — a case with no SAM match comes back as "needs more evidence," strength 1/5, with appeal text that says so plainly instead of inventing visual detail.
+This is an agent with a visible second reasoning step, not a one-shot wrapper: it doesn't just verify, it tells the worker what to do next and is honest when the photo doesn't back up the claim — a case with no SAM match comes back as "needs more evidence," strength 1/5, with appeal text that says so plainly instead of inventing visual detail. The authenticity check is a soft signal, not an accusation: messaging apps strip EXIF from real photos too, so missing metadata lowers confidence rather than blocking filing outright. A GPS mismatch between the photo and the claimed location is the strongest of the three signals and is called out to the worker directly.
 
 ## Why this instead of a civic-complaint app
 
@@ -30,6 +31,7 @@ Next.js 16 (App Router, TypeScript, Tailwind)
 ├── /api/file-case       POST: runs the full verification + drafting pipeline
 ├── /api/cases           GET: lists stored cases
 ├── src/lib/meta-client.ts   all Meta Model API calls live here
+├── src/lib/authenticity.ts  EXIF-based photo authenticity signal (camera info, timestamp, GPS match)
 ├── src/lib/store.ts         JSON file store + pattern detection (data/cases.json, gitignored)
 └── src/lib/wav-recorder.ts  browser-side WAV encoder (no ffmpeg needed anywhere)
 ```
@@ -62,6 +64,7 @@ Everything below was run against the real Meta Model API during development, not
 - `muse-spark-1.3` structured-output drafting via `chat.completions.create` + `response_format: json_schema` — confirmed working, and `reasoning_effort: "minimal"` cut token spend from 1586 to 551 tokens on a representative call with no observed quality loss.
 - The full `/api/file-case` → `AppealResult` flow was driven end-to-end in a real browser against the live API, including the "no match" path (SAM finds nothing → Spark honestly reports low strength and asks for more evidence, instead of fabricating support for the worker's claim).
 - `muse-voice-transcribe-1.0`: the `POST /v1/asr/transcribe` call itself (auth, multipart shape, response parsing) was confirmed live with a synthetic WAV -- request/response match `transcribeVoiceNote` exactly. **Not yet tested:** the browser's mic capture → WAV encoding (`wav-recorder.ts`) with a real human voice, on a real device. That's the one piece to try before the demo.
+- The authenticity check was run against four real EXIF scenarios through the live `/api/file-case` pipeline: no metadata, matching GPS, a GPS mismatch, and a 5-day-old timestamp -- all four were correctly distinguished and fed into Spark's reasoning (a caught bug along the way: `exifr`'s `pick` filter was silently dropping the computed GPS fields; fixed by not restricting the parse).
 
 ## Budget strategy ($150 API credit)
 
@@ -70,10 +73,14 @@ Everything below was run against the real Meta Model API during development, not
 - `mask_encoding: "one_bit"` on every SAM 3.1 call for the smallest mask payloads.
 - The pattern-match check (`findSimilarRecentCase`) is pure deterministic geo-math, not an LLM call.
 
+## Known limitation
+
+The authenticity check is a soft signal, not proof. A sophisticated fake (an AI-generated photo with fabricated EXIF matching the claimed GPS, or a phone with its camera metadata manually edited) would still pass. Combined with SAM 3.1's content check, it raises the bar meaningfully above "any photo passes," but neither this nor SAM 3.1 is a deepfake detector. Worth saying plainly in the demo if asked, rather than overclaiming.
+
 ## What's left before submission
 
 - [ ] Test the voice note end-to-end with a real recording on the device you'll demo with (browser mic permissions + WAV encoding haven't been exercised live yet).
-- [ ] Record the 3-minute demo: file a case with strong matching evidence (full strength, "submit now") → file one with no evidence (honest "needs more evidence") → show the map and stats on `/cases`.
+- [ ] Record the 3-minute demo: file a case with strong matching evidence (full strength, "submit now") → file one with no evidence (honest "needs more evidence") → file one with mismatched GPS (shows the authenticity check) → show the map and stats on `/cases`.
 - [ ] Push to a **public** GitHub repo and add every team member before the Nov 4, 9:00 PM ET deadline.
 
 ## Why this fits the rules
