@@ -2,14 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // react-leaflet's MapContainer can't cleanly reinitialize into the same DOM
-  // node when React 19 double-invokes effects under Strict Mode in dev --
-  // Leaflet owns that container, not React, and throws "already initialized"
-  // / appendChild errors on the second mount. Dev-only; production builds
-  // never double-invoke effects, so this only affects local development.
-  reactStrictMode: false,
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Previous theory (disabling reactStrictMode) was wrong and didn't fix it --
+  // the real cause, confirmed from the browser's actual stack trace, is
+  // Next's experimental cacheComponents/partialPrefetching: they use React's
+  // Activity mechanism to keep prefetched route segments mounted-but-hidden
+  // and "reconnect" them on navigation (reconnectPassiveEffects in the
+  // trace), rather than a fresh mount. Leaflet's MapContainer has no concept
+  // of being reconnected without unmounting first, so it throws "Map
+  // container is being reused by another instance". These two options are
+  // the actual culprits; reactStrictMode was never the issue.
+  cacheComponents: false,
   turbopack: {
     rules: {
       "*.css": {
